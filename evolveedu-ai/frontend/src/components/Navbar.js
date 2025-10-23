@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
+import PropTypes from 'prop-types';
 import {
   User,
   Settings,
@@ -13,7 +14,18 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-export default function Navbar() {
+/**
+ * Navbar Component
+ * 
+ * Main navigation component for the application. Displays:
+ * - App logo and branding
+ * - Search functionality
+ * - User XP display
+ * - Notifications bell
+ * - User profile menu
+ * - Responsive mobile menu
+ */
+function Navbar() {
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -181,3 +193,9 @@ export default function Navbar() {
     </>
   );
 }
+
+Navbar.propTypes = {
+  onLogout: PropTypes.func,
+};
+
+export default Navbar;
