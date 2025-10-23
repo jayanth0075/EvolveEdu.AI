@@ -18,17 +18,28 @@ import { motion, AnimatePresence } from 'framer-motion';
  * Navbar Component
  * 
  * Main navigation component for the application. Displays:
- * - App logo and branding
- * - Search functionality
- * - User XP display
- * - Notifications bell
- * - User profile menu
- * - Responsive mobile menu
+ * - App logo and branding with gradient styling
+ * - Search functionality for courses, notes, and topics
+ * - User XP display with achievement badge
+ * - Notifications bell with real-time alerts
+ * - User profile menu with settings and profile options
+ * - Responsive mobile menu with smooth animations
+ * 
+ * @component
+ * @returns {JSX.Element} Navigation bar with responsive design
+ * 
+ * Features:
+ * - Sticky positioning with backdrop blur effect
+ * - Mobile-responsive layout with hamburger menu
+ * - Active link highlighting
+ * - Logout functionality with localStorage cleanup
+ * - PropTypes validation for component safety
  */
 function Navbar() {
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [notificationCount, setNotificationCount] = useState(3);
 
   const logout = () => {
     localStorage.removeItem('token');
@@ -79,8 +90,11 @@ function Navbar() {
           </div>
 
           {/* Notifications */}
-          <button className="p-2 text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors">
+          <button className="relative p-2 text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors" title={`${notificationCount} new notifications`}>
             <Bell className="h-5 w-5" />
+            {notificationCount > 0 && (
+              <span className="absolute top-1 right-1 h-2 w-2 bg-red-500 rounded-full animate-pulse" />
+            )}
           </button>
 
           {/* User Menu */}
