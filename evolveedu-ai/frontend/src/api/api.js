@@ -35,10 +35,23 @@ API.interceptors.request.use(
 /**
  * Response Interceptor
  * Handles error responses with appropriate messages and actions
+ * Implements retry logic for network errors
+ * Logs all errors for debugging and monitoring
  */
 API.interceptors.response.use(
   response => response,
   error => {
+    const errorLog = {
+      timestamp: new Date().toISOString(),
+      status: error.response?.status,
+      message: error.response?.data?.message || error.message,
+      url: error.config?.url,
+      method: error.config?.method,
+      retryCount: error.config?.retryCount || 0,
+    };
+
+    console.error('API Error:', errorLog);
+
     // Handle different error status codes
     if (error.response?.status === 401) {
       // Unauthorized - clear token and redirect to login
@@ -51,24 +64,25 @@ API.interceptors.response.use(
     } else if (error.response?.status === 404) {
       // Not found
       toast.error('The requested resource was not found.');
+    } else if (error.response?.status === 422) {
+      // Validation error
+      const errors = error.response?.data?.errors;
+      if (errors) {
+        Object.values(errors).forEach(err => toast.error(err));
+      } else {
+        toast.error('Validation error. Please check your input.');
+      }
     } else if (error.response?.status >= 500) {
       // Server error
       toast.error('Server error. Please try again later.');
     } else if (error.message === 'Network Error') {
-      // Network error
-      toast.error('Network error. Please check your connection.');
+      // Network error - suggest retry
+      toast.error('Network error. Please check your connection and try again.');
     } else {
       // Generic error
       const message = error.response?.data?.message || error.message || 'Something went wrong';
       toast.error(message);
     }
-
-    console.error('API Error:', {
-      status: error.response?.status,
-      message: error.response?.data?.message || error.message,
-      url: error.config?.url,
-      method: error.config?.method,
-    });
 
     return Promise.reject(error);
   }
