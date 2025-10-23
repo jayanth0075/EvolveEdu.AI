@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import AnimatedCard from '../components/AnimatedCard';
 import ProgressRing from '../components/ProgressRing';
 import {
@@ -9,9 +9,27 @@ import {
   Award,
   Users,
   Brain,
-  BarChart3
+  BarChart3,
+  Zap,
+  Clock
 } from 'lucide-react';
 import { motion } from 'framer-motion';
+
+/**
+ * Dashboard Component
+ * 
+ * Main dashboard showing:
+ * - Weekly learning progress with visual indicators
+ * - Overall statistics (XP, streak, courses completed)
+ * - Personal goals and skill assessments
+ * - Personalized learning roadmap
+ * - Progress analytics and achievements
+ * - Animated metric cards with framer-motion
+ * - Responsive grid layout for desktop and mobile
+ * 
+ * @component
+ * @returns {JSX.Element} Main dashboard with learning statistics and recommendations
+ */
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -36,7 +54,17 @@ const itemVariants = {
   }
 };
 
-export default function Dashboard(){
+function Dashboard(){
+  const [userStats, setUserStats] = useState({
+    totalXP: 2450,
+    currentStreak: 12,
+    coursesEnrolled: 8,
+    completionRate: 65
+  });
+
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
   const weeklyProgress = [
     { day: 'Mon', completed: 4, total: 5 },
     { day: 'Tue', completed: 5, total: 5 },
@@ -46,6 +74,24 @@ export default function Dashboard(){
     { day: 'Sat', completed: 0, total: 3 },
     { day: 'Sun', completed: 0, total: 3 },
   ];
+
+  useEffect(() => {
+    // Fetch user stats from API
+    const fetchUserStats = async () => {
+      try {
+        setLoading(true);
+        console.log('Dashboard mounted - fetching user statistics...');
+        // API call would go here
+        setUserStats(prev => ({...prev}));
+        setLoading(false);
+      } catch (err) {
+        setError(err.message);
+        setLoading(false);
+        console.error('Failed to fetch user statistics:', err);
+      }
+    };
+    fetchUserStats();
+  }, []);
 
   return (
     <div className="p-6">
@@ -197,3 +243,5 @@ export default function Dashboard(){
     </div>
   );
 }
+
+export default Dashboard;
