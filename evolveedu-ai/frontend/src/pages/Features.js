@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import {
   Brain,
   Target,
@@ -21,11 +21,7 @@ import {
 } from 'lucide-react';
 
 const Features = () => {
-  const [isVisible, setIsVisible] = useState(false);
-
-  useEffect(() => {
-    setIsVisible(true);
-  }, []);
+  // Removed unnecessary state and useEffect for better performance
 
   const mainFeatures = [
     {
@@ -138,7 +134,7 @@ const Features = () => {
       {/* Header Section */}
       <section className="relative pt-20 pb-16 px-4">
         <div className="max-w-6xl mx-auto text-center">
-          <div className={`transform transition-all duration-1000 ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-20 opacity-0'}`}>
+          <div className="transform transition-all duration-1000 translate-y-0 opacity-100">
             <div className="inline-flex items-center bg-purple-500/20 backdrop-blur-sm border border-purple-500/30 rounded-full px-6 py-3 mb-8">
               <Sparkles className="w-4 h-4 mr-2 text-purple-400" />
               <span className="text-sm font-medium text-purple-200">Advanced AI-Powered Features</span>
