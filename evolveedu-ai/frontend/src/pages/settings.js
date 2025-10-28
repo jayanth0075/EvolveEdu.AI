@@ -35,29 +35,29 @@ const Settings = () => {
       exit="out"
       variants={pageVariants}
       transition={pageTransition}
-      className="max-w-4xl mx-auto p-6"
+      className="max-w-4xl mx-auto p-6 bg-gray-50 min-h-screen"
     >
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-white mb-2">Settings</h1>
-        <p className="text-gray-400">Manage your account preferences and settings</p>
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">Settings</h1>
+        <p className="text-gray-600">Manage your account preferences and settings</p>
       </div>
 
       <div className="grid gap-6">
         {/* Appearance Settings */}
         <motion.div
-          className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20"
+          className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm"
           whileHover={{ scale: 1.02 }}
           transition={{ duration: 0.2 }}
         >
           <div className="flex items-center mb-4">
-            <EyeIcon className="h-6 w-6 text-purple-400 mr-3" />
-            <h2 className="text-xl font-semibold text-white">Appearance</h2>
+            <EyeIcon className="h-6 w-6 text-blue-600 mr-3" />
+            <h2 className="text-xl font-semibold text-gray-900">Appearance</h2>
           </div>
 
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-white font-medium">Dark Mode</h3>
-              <p className="text-gray-400 text-sm">Toggle between light and dark themes</p>
+              <h3 className="text-gray-900 font-medium">Dark Mode</h3>
+              <p className="text-gray-600 text-sm">Toggle between light and dark themes</p>
             </div>
             <button
               onClick={() => setDarkMode(!darkMode)}
