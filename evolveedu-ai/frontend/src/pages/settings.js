@@ -76,20 +76,20 @@ const Settings = () => {
 
         {/* Notification Settings */}
         <motion.div
-          className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20"
+          className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm"
           whileHover={{ scale: 1.02 }}
           transition={{ duration: 0.2 }}
         >
           <div className="flex items-center mb-4">
-            <BellIcon className="h-6 w-6 text-purple-400 mr-3" />
-            <h2 className="text-xl font-semibold text-white">Notifications</h2>
+            <BellIcon className="h-6 w-6 text-blue-600 mr-3" />
+            <h2 className="text-xl font-semibold text-gray-900">Notifications</h2>
           </div>
 
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-white font-medium">Push Notifications</h3>
-                <p className="text-gray-400 text-sm">Receive notifications about updates</p>
+                <h3 className="text-gray-900 font-medium">Push Notifications</h3>
+                <p className="text-gray-600 text-sm">Receive notifications about updates</p>
               </div>
               <button
                 onClick={() => setNotifications(!notifications)}
@@ -107,8 +107,8 @@ const Settings = () => {
 
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-white font-medium">Email Updates</h3>
-                <p className="text-gray-400 text-sm">Get updates via email</p>
+                <h3 className="text-gray-900 font-medium">Email Updates</h3>
+                <p className="text-gray-600 text-sm">Get updates via email</p>
               </div>
               <button
                 onClick={() => setEmailUpdates(!emailUpdates)}
@@ -128,18 +128,18 @@ const Settings = () => {
 
         {/* Privacy Settings */}
         <motion.div
-          className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20"
+          className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm"
           whileHover={{ scale: 1.02 }}
           transition={{ duration: 0.2 }}
         >
           <div className="flex items-center mb-4">
-            <ShieldCheckIcon className="h-6 w-6 text-purple-400 mr-3" />
-            <h2 className="text-xl font-semibold text-white">Privacy</h2>
+            <ShieldCheckIcon className="h-6 w-6 text-blue-600 mr-3" />
+            <h2 className="text-xl font-semibold text-gray-900">Privacy</h2>
           </div>
 
           <div>
-            <h3 className="text-white font-medium mb-2">Profile Visibility</h3>
-            <p className="text-gray-400 text-sm mb-4">Choose who can see your profile</p>
+            <h3 className="text-gray-900 font-medium mb-2">Profile Visibility</h3>
+            <p className="text-gray-600 text-sm mb-4">Choose who can see your profile</p>
 
             <div className="space-y-2">
               {['public', 'friends', 'private'].map((option) => (
@@ -150,9 +150,9 @@ const Settings = () => {
                     value={option}
                     checked={privacy === option}
                     onChange={(e) => setPrivacy(e.target.value)}
-                    className="h-4 w-4 text-purple-600 border-gray-300 focus:ring-purple-500"
+                    className="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500"
                   />
-                  <span className="ml-2 text-white capitalize">{option}</span>
+                  <span className="ml-2 text-gray-900 capitalize">{option}</span>
                 </label>
               ))}
             </div>
@@ -161,17 +161,17 @@ const Settings = () => {
 
         {/* Account Settings */}
         <motion.div
-          className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20"
+          className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm"
           whileHover={{ scale: 1.02 }}
           transition={{ duration: 0.2 }}
         >
           <div className="flex items-center mb-4">
-            <UserIcon className="h-6 w-6 text-purple-400 mr-3" />
-            <h2 className="text-xl font-semibold text-white">Account</h2>
+            <UserIcon className="h-6 w-6 text-blue-600 mr-3" />
+            <h2 className="text-xl font-semibold text-gray-900">Account</h2>
           </div>
 
           <div className="space-y-4">
-            <button className="w-full bg-purple-600 hover:bg-purple-700 text-white font-medium py-2 px-4 rounded-lg transition-colors">
+            <button className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors">
               Change Password
             </button>
             <button className="w-full bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded-lg transition-colors">

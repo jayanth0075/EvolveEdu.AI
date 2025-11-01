@@ -64,7 +64,7 @@ export default function Sidebar() {
   const location = useLocation();
 
   return (
-    <aside className="w-64 bg-white/60 backdrop-blur-sm border-r border-slate-200/70 h-[calc(100vh-76px)] sticky top-[76px] overflow-y-auto">
+    <aside className="w-64 bg-white border-r border-slate-200 h-[calc(100vh-76px)] sticky top-[76px] overflow-y-auto shadow-sm">
       <div className="p-4">
         {/* Main Navigation */}
         <div className="mb-8">
@@ -139,23 +139,23 @@ export default function Sidebar() {
         </div>
 
         {/* Quick Stats */}
-        <div className="mt-8 p-4 bg-gradient-to-br from-slate-50 to-slate-100 rounded-lg border border-slate-200">
-          <h4 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
-            <Calendar className="h-4 w-4" />
+        <div className="mt-8 p-4 bg-blue-50 rounded-lg border border-blue-200">
+          <h4 className="text-sm font-semibold text-blue-900 mb-3 flex items-center gap-2">
+            <Calendar className="h-4 w-4 text-blue-600" />
             This Week
           </h4>
           <div className="space-y-2">
             <div className="flex justify-between items-center text-xs">
-              <span className="text-slate-600">Study Time</span>
-              <span className="font-semibold text-slate-800">8.5 hrs</span>
+              <span className="text-gray-700">Study Time</span>
+              <span className="font-semibold text-gray-900">8.5 hrs</span>
             </div>
             <div className="flex justify-between items-center text-xs">
-              <span className="text-slate-600">Quizzes Completed</span>
-              <span className="font-semibold text-slate-800">12</span>
+              <span className="text-gray-700">Quizzes Completed</span>
+              <span className="font-semibold text-gray-900">12</span>
             </div>
             <div className="flex justify-between items-center text-xs">
-              <span className="text-slate-600">Notes Created</span>
-              <span className="font-semibold text-slate-800">7</span>
+              <span className="text-gray-700">Notes Created</span>
+              <span className="font-semibold text-gray-900">7</span>
             </div>
           </div>
         </div>
