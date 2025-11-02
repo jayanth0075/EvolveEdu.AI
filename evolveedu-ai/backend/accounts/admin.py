@@ -21,7 +21,7 @@ class UserAdmin(BaseUserAdmin):
 
 @admin.register(UserProgress)
 class UserProgressAdmin(admin.ModelAdmin):
-    list_display = ('user', 'total_study_time', 'streak_days', 'level', 'created_at')
-    list_filter = ('level', 'created_at')
+    list_display = ('user', 'total_study_time')
+    list_filter = ('user',)
     search_fields = ('user__email', 'user__username')
-    readonly_fields = ('created_at', 'updated_at')
+    readonly_fields = ()

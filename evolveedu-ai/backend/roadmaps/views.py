@@ -17,7 +17,7 @@ from .serializers import (
     LearningResourceSerializer, UserProgressSerializer, GenerateRoadmapRequestSerializer,
     SkillGapAnalysisSerializer
 )
-from .ai_service import RoadmapAIService
+# from .ai_service import RoadmapAIService
 
 
 class SkillCategoryListView(generics.ListCreateAPIView):

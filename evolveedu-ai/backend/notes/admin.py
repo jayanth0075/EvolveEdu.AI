@@ -4,12 +4,8 @@ from .models import Note, NoteCategory, NoteShare, StudySession
 
 @admin.register(NoteCategory)
 class NoteCategoryAdmin(admin.ModelAdmin):
-    list_display = ('name', 'color', 'note_count')
+    list_display = ('name', 'icon')
     search_fields = ('name',)
-    
-    def note_count(self, obj):
-        return obj.notes.count()
-    note_count.short_description = 'Total Notes'
 
 
 @admin.register(Note)
@@ -36,7 +32,7 @@ class NoteShareAdmin(admin.ModelAdmin):
 
 @admin.register(StudySession)
 class StudySessionAdmin(admin.ModelAdmin):
-    list_display = ('user', 'subject', 'duration_minutes', 'created_at')
-    list_filter = ('subject', 'created_at')
-    search_fields = ('user__email', 'subject', 'notes')
-    readonly_fields = ('created_at',)
+    list_display = ('user', 'title', 'duration_minutes', 'start_time')
+    list_filter = ('start_time',)
+    search_fields = ('user__email', 'title')
+    readonly_fields = ()
