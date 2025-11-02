@@ -11,4 +11,13 @@ transformers==4.33.2
 torch==2.0.1
 huggingface-hub==0.17.3
 requests==2.31.0
+
+# AI Providers
+google-generativeai>=0.8.5
+openai>=2.6.1
+
+# Additional dependencies
+youtube-transcript-api>=0.6.2
+PyPDF2>=3.0.0
+
 ### These are the requirements to be installed before running 
