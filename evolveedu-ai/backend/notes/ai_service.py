@@ -1,48 +1,45 @@
 """
 AI Service for Notes Generation and Enhancement
-Uses HuggingFace Transformers for text summarization, Q&A generation, and key point extraction
+Supports multiple AI providers: OpenAI, GitHub Models (Copilot), Google Gemini
 """
 
 import os
+import sys
 import json
 import re
 from typing import Dict, List
-import requests
-from transformers import pipeline, AutoTokenizer, AutoModelForSeq2SeqLM
 from dotenv import load_dotenv
 
-load_dotenv()
+# Add parent directory to path to import core module
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+from core.ai_service import ai_service
 
-HF_API_KEY = os.getenv('HF_API_KEY', '')
+load_dotenv()
 
 
 class NotesAIService:
     """Service for AI-powered note generation and enhancement"""
 
     def __init__(self):
-        """Initialize HuggingFace models"""
-        # Summarization model
-        self.summarizer = pipeline(
-            "summarization",
-            model="facebook/bart-large-cnn",
-            device=0 if self._has_gpu() else -1
-        )
-        
-        # Question answering model for Q&A generation
-        self.qa_pipeline = pipeline(
-            "question-answering",
-            model="deepset/roberta-base-squad2",
-            device=0 if self._has_gpu() else -1
-        )
+        """Initialize AI service (supports multiple providers)"""
+        self.ai = ai_service
+        provider_info = self.ai.get_provider_info()
+        print(f"📝 Notes AI using: {provider_info['provider']} ({provider_info['model']})")
 
-    @staticmethod
-    def _has_gpu():
-        """Check if GPU is available"""
+    def _call_ai(self, prompt: str, system_prompt: str = None, max_tokens: int = 1000) -> str:
+        """Call AI API with given prompt using unified service"""
         try:
-            import torch
-            return torch.cuda.is_available()
-        except:
-            return False
+            if not system_prompt:
+                system_prompt = "You are an expert educational assistant. Provide clear, concise, and accurate responses."
+            
+            return self.ai.generate_completion(
+                prompt=prompt,
+                system_prompt=system_prompt,
+                max_tokens=max_tokens,
+                temperature=0.7
+            )
+        except Exception as e:
+            return f"Error calling AI API: {str(e)}"
 
     @staticmethod
     def _extract_text_from_youtube(url: str) -> str:
@@ -74,85 +71,6 @@ class NotesAIService:
         except Exception as e:
             return f"Error extracting PDF text: {str(e)}"
 
-    @staticmethod
-    def _extract_key_points(text: str, num_points: int = 5) -> List[str]:
-        """Extract key points from text using sentence importance"""
-        sentences = re.split(r'[.!?]+', text)
-        sentences = [s.strip() for s in sentences if len(s.strip()) > 20]
-        
-        # Simple heuristic: longer, more complex sentences are likely key points
-        scored_sentences = [
-            (s, len(s.split())) for s in sentences
-        ]
-        scored_sentences.sort(key=lambda x: x[1], reverse=True)
-        
-        key_points = [s[0] for s in scored_sentences[:num_points]]
-        return [point for point in key_points if point]
-
-    @staticmethod
-    def _generate_questions_from_text(text: str, num_questions: int = 5) -> List[str]:
-        """Generate potential questions from text"""
-        questions = []
-        
-        # Extract sentences that contain important words
-        sentences = re.split(r'[.!?]+', text)
-        sentences = [s.strip() for s in sentences if len(s.strip()) > 20]
-        
-        # Generate questions from selected sentences
-        for sentence in sentences[:num_questions]:
-            # Simple question generation patterns
-            if ' is ' in sentence.lower():
-                question = sentence.replace(' is ', ' is what ').rstrip() + '?'
-                questions.append(question)
-            elif ' have ' in sentence.lower():
-                words = sentence.split()
-                question = f"What {' '.join(words)}?"
-                questions.append(question)
-            else:
-                question = f"Explain: {sentence.rstrip()}?"
-                questions.append(question)
-        
-        return questions[:num_questions]
-
-    @staticmethod
-    def _estimate_difficulty(text: str) -> str:
-        """Estimate text difficulty level based on word complexity"""
-        words = text.split()
-        avg_word_length = sum(len(w) for w in words) / len(words) if words else 0
-        
-        if avg_word_length < 4:
-            return "Easy"
-        elif avg_word_length < 6:
-            return "Medium"
-        else:
-            return "Hard"
-
-    @staticmethod
-    def _estimate_read_time(text: str) -> int:
-        """Estimate reading time in minutes (avg 200 words per minute)"""
-        words = len(text.split())
-        return max(1, words // 200)
-
-    def _summarize_text(self, text: str, max_length: int = 150, min_length: int = 50) -> str:
-        """Generate summary using BART model"""
-        try:
-            # Split text into chunks if too long (model has token limit)
-            max_chunk_length = 1000
-            chunks = [text[i:i+max_chunk_length] for i in range(0, len(text), max_chunk_length)]
-            
-            summaries = []
-            for chunk in chunks[:3]:  # Limit to 3 chunks to avoid too much processing
-                if len(chunk.split()) > 20:
-                    try:
-                        summary = self.summarizer(chunk, max_length=max_length, min_length=min_length)
-                        summaries.append(summary[0]['summary_text'])
-                    except:
-                        pass
-            
-            return ' '.join(summaries) if summaries else text[:500]
-        except Exception as e:
-            return f"Summary generation error: {str(e)}"
-
     @classmethod
     def process_youtube_url(cls, url: str, title: str = "") -> Dict:
         """Process YouTube URL and generate structured notes"""
@@ -165,66 +83,109 @@ class NotesAIService:
             return {
                 'error': text,
                 'content': 'YouTube transcript could not be extracted',
-                'summary': 'Please try another video or provide the transcript manually'
+                'summary': 'Please try another video or provide the transcript manually',
+                'success': False
             }
         
-        # Generate components
-        summary = service._summarize_text(text)
-        key_points = service._extract_key_points(text)
-        questions = service._generate_questions_from_text(text)
-        difficulty = service._estimate_difficulty(text)
-        read_time = service._estimate_read_time(text)
+        # Use OpenAI to generate components
+        summary_prompt = f"""Provide a concise summary (2-3 sentences) of the following transcript:
         
-        # Extract tags from text
-        tags = ['youtube', 'video']
-        if any(word in text.lower() for word in ['python', 'javascript', 'java']):
-            tags.append('programming')
-        if any(word in text.lower() for word in ['algorithm', 'data structure', 'complexity']):
-            tags.append('algorithms')
-        if any(word in text.lower() for word in ['machine learning', 'ai', 'neural']):
-            tags.append('AI/ML')
+{text[:2000]}"""
+        
+        summary = service._call_ai(summary_prompt, max_tokens=300)
+        
+        keypoints_prompt = f"""Extract 5 key points from this transcript as a JSON array:
+
+{text[:2000]}
+
+Respond ONLY with a JSON array like: ["point1", "point2", "point3", "point4", "point5"]"""
+        
+        keypoints_response = service._call_ai(keypoints_prompt, max_tokens=300)
+        try:
+            key_points = json.loads(keypoints_response)
+        except:
+            key_points = [s.strip() for s in keypoints_response.split('\n') if s.strip()][:5]
+        
+        questions_prompt = f"""Generate 5 study questions based on this transcript as a JSON array:
+
+{text[:2000]}
+
+Respond ONLY with a JSON array like: ["question1?", "question2?", "question3?", "question4?", "question5?"]"""
+        
+        questions_response = service._call_ai(questions_prompt, max_tokens=300)
+        try:
+            questions = json.loads(questions_response)
+        except:
+            questions = [s.strip() for s in questions_response.split('\n') if s.strip() and '?' in s][:5]
+        
+        # Estimate read time
+        word_count = len(text.split())
+        read_time = max(1, word_count // 200)
         
         return {
-            'title': title or 'YouTube Notes',
-            'content': text[:2000],  # Store first 2000 chars as preview
+            'title': title or 'YouTube Video Notes',
+            'content': text[:2000],
             'summary': summary,
             'key_points': key_points[:5],
             'questions': questions[:5],
-            'difficulty_level': difficulty,
+            'difficulty_level': 'Intermediate',
             'estimated_read_time': read_time,
-            'tags': tags
+            'tags': ['youtube', 'video'],
+            'success': True
         }
 
     @classmethod
-    def process_text_input(cls, text: str, title: str) -> Dict:
+    def process_text_input(cls, text: str, title: str = "") -> Dict:
         """Process text input and generate structured notes"""
         service = cls()
         
-        # Generate components
-        summary = service._summarize_text(text)
-        key_points = service._extract_key_points(text)
-        questions = service._generate_questions_from_text(text)
-        difficulty = service._estimate_difficulty(text)
-        read_time = service._estimate_read_time(text)
+        # Generate summary
+        summary_prompt = f"""Provide a concise summary (2-3 sentences) of the following text:
         
-        # Extract tags from text
-        tags = ['text-input']
-        if any(word in text.lower() for word in ['python', 'javascript', 'java', 'code']):
-            tags.append('programming')
-        if any(word in text.lower() for word in ['math', 'equation', 'formula']):
-            tags.append('mathematics')
-        if any(word in text.lower() for word in ['history', 'historical', 'dates']):
-            tags.append('history')
+{text[:2000]}"""
+        
+        summary = service._call_ai(summary_prompt, max_tokens=300)
+        
+        # Generate key points
+        keypoints_prompt = f"""Extract 5 key points from this text as a JSON array:
+
+{text[:2000]}
+
+Respond ONLY with a JSON array like: ["point1", "point2", "point3", "point4", "point5"]"""
+        
+        keypoints_response = service._call_ai(keypoints_prompt, max_tokens=300)
+        try:
+            key_points = json.loads(keypoints_response)
+        except:
+            key_points = [s.strip() for s in keypoints_response.split('\n') if s.strip()][:5]
+        
+        # Generate questions
+        questions_prompt = f"""Generate 5 study questions based on this text as a JSON array:
+
+{text[:2000]}
+
+Respond ONLY with a JSON array like: ["question1?", "question2?", "question3?", "question4?", "question5?"]"""
+        
+        questions_response = service._call_ai(questions_prompt, max_tokens=300)
+        try:
+            questions = json.loads(questions_response)
+        except:
+            questions = [s.strip() for s in questions_response.split('\n') if s.strip() and '?' in s][:5]
+        
+        # Estimate read time
+        word_count = len(text.split())
+        read_time = max(1, word_count // 200)
         
         return {
-            'title': title,
+            'title': title or 'AI Generated Notes',
             'content': text,
             'summary': summary,
             'key_points': key_points[:5],
             'questions': questions[:5],
-            'difficulty_level': difficulty,
+            'difficulty_level': 'Intermediate',
             'estimated_read_time': read_time,
-            'tags': tags
+            'tags': ['text-input', 'ai-generated'],
+            'success': True
         }
 
     @classmethod
@@ -239,32 +200,55 @@ class NotesAIService:
             return {
                 'error': text,
                 'content': 'PDF text could not be extracted',
-                'summary': 'Please check the PDF file format'
+                'summary': 'Please check the PDF file format',
+                'success': False
             }
         
-        # Generate components
-        summary = service._summarize_text(text)
-        key_points = service._extract_key_points(text)
-        questions = service._generate_questions_from_text(text)
-        difficulty = service._estimate_difficulty(text)
-        read_time = service._estimate_read_time(text)
+        # Use OpenAI to generate components
+        summary_prompt = f"""Provide a concise summary (2-3 sentences) of this PDF content:
         
-        # Extract tags from text
-        tags = ['pdf']
-        if any(word in text.lower() for word in ['research', 'study', 'methodology']):
-            tags.append('research')
-        if any(word in text.lower() for word in ['business', 'economics', 'finance']):
-            tags.append('business')
+{text[:2000]}"""
+        
+        summary = service._call_ai(summary_prompt, max_tokens=300)
+        
+        keypoints_prompt = f"""Extract 5 key points from this PDF as a JSON array:
+
+{text[:2000]}
+
+Respond ONLY with a JSON array like: ["point1", "point2", "point3", "point4", "point5"]"""
+        
+        keypoints_response = service._call_ai(keypoints_prompt, max_tokens=300)
+        try:
+            key_points = json.loads(keypoints_response)
+        except:
+            key_points = [s.strip() for s in keypoints_response.split('\n') if s.strip()][:5]
+        
+        questions_prompt = f"""Generate 5 study questions based on this PDF as a JSON array:
+
+{text[:2000]}
+
+Respond ONLY with a JSON array like: ["question1?", "question2?", "question3?", "question4?", "question5?"]"""
+        
+        questions_response = service._call_ai(questions_prompt, max_tokens=300)
+        try:
+            questions = json.loads(questions_response)
+        except:
+            questions = [s.strip() for s in questions_response.split('\n') if s.strip() and '?' in s][:5]
+        
+        # Estimate read time
+        word_count = len(text.split())
+        read_time = max(1, word_count // 200)
         
         return {
             'title': title or 'PDF Notes',
-            'content': text[:2000],  # Store first 2000 chars as preview
+            'content': text[:2000],
             'summary': summary,
             'key_points': key_points[:5],
             'questions': questions[:5],
-            'difficulty_level': difficulty,
+            'difficulty_level': 'Intermediate',
             'estimated_read_time': read_time,
-            'tags': tags
+            'tags': ['pdf', 'ai-generated'],
+            'success': True
         }
 
     @classmethod
@@ -272,24 +256,27 @@ class NotesAIService:
         """Enhance existing notes with additional insights"""
         service = cls()
         
-        # Generate enhancement
-        summary = service._summarize_text(content)
-        key_points = service._extract_key_points(content, num_points=7)
-        questions = service._generate_questions_from_text(content, num_questions=7)
+        enhance_prompt = f"""Enhance these study notes by adding:
+1. More detailed explanations
+2. Real-world examples
+3. Common misconceptions to avoid
+4. Practice tips
+
+Original notes:
+{content[:2000]}
+
+Provide enhanced notes in a clear format."""
         
-        # Additional insights
-        sentences = content.split('.')
-        complex_sentences = [s for s in sentences if len(s.split()) > 15]
+        enhanced_content = service._call_ai(enhance_prompt, max_tokens=1500)
+        
+        # Generate summary of enhancements
+        summary_prompt = f"""Summarize what was added to enhance these notes (1-2 sentences):
+{enhanced_content}"""
+        
+        summary = service._call_ai(summary_prompt, max_tokens=200)
         
         return {
-            'enhanced_summary': summary,
-            'key_points': key_points,
-            'practice_questions': questions,
-            'complex_concepts': complex_sentences[:3],
-            'study_tips': [
-                'Focus on the key points identified above',
-                'Try to answer the practice questions',
-                'Review the enhanced summary before exams',
-                'Connect these concepts with previous knowledge'
-            ]
+            'enhanced_content': enhanced_content,
+            'enhancement_summary': summary,
+            'success': True
         }

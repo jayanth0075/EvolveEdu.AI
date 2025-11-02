@@ -1,135 +1,111 @@
 """
 AI Service for Quiz Generation and Recommendations
-Uses HuggingFace models for generating questions and scoring
+Uses OpenAI GPT for generating questions and scoring
 """
 
 import os
 import json
 import random
 from typing import Dict, List, Tuple
-from transformers import pipeline
+import requests
 from dotenv import load_dotenv
 
 load_dotenv()
 
-HF_API_KEY = os.getenv('HF_API_KEY', '')
+OPENAI_API_KEY = os.getenv('OPENAI_API_KEY', '')
+OPENAI_MODEL = os.getenv('OPENAI_MODEL', 'gpt-4o-mini')
 
 
 class QuizAIService:
     """Service for AI-powered quiz generation and management"""
 
     def __init__(self):
-        """Initialize HuggingFace models"""
-        try:
-            self.qa_pipeline = pipeline(
-                "question-answering",
-                model="deepset/roberta-base-squad2",
-                device=0 if self._has_gpu() else -1
-            )
-        except:
-            self.qa_pipeline = None
+        """Initialize OpenAI client"""
+        self.api_key = OPENAI_API_KEY
+        self.model = OPENAI_MODEL
+        self.api_url = "https://api.openai.com/v1/chat/completions"
+        
+        if not self.api_key:
+            raise ValueError("OPENAI_API_KEY not configured in .env file")
 
-    @staticmethod
-    def _has_gpu():
-        """Check if GPU is available"""
+    def _call_openai(self, prompt: str, max_tokens: int = 1000) -> str:
+        """Call OpenAI API with given prompt"""
         try:
-            import torch
-            return torch.cuda.is_available()
-        except:
-            return False
-
-    @staticmethod
-    def _generate_multiple_choice(question: str, correct_answer: str, context: str) -> Dict:
-        """Generate multiple choice options for a question"""
-        # Generate distractors from context
-        words = context.split()
-        random.shuffle(words)
-        
-        # Create simple distractors (in production, use more sophisticated methods)
-        distractors = []
-        
-        # Distractor 1: Random phrases from context
-        if len(words) > 10:
-            distractor1 = ' '.join(random.sample(words, min(5, len(words))))
-            distractors.append(distractor1)
-        
-        # Distractor 2: Partial answer
-        answer_words = correct_answer.split()
-        if len(answer_words) > 1:
-            distractor2 = ' '.join(answer_words[:-1])
-            distractors.append(distractor2)
-        else:
-            distractor2 = correct_answer + ' not'
-            distractors.append(distractor2)
-        
-        # Distractor 3: Similar word
-        distractors.append(f"None of the above")
-        
-        # Compile options
-        options = [correct_answer] + distractors[:3]
-        random.shuffle(options)
-        
-        return {
-            'options': options,
-            'correct_index': options.index(correct_answer),
-            'correct_answer': correct_answer
-        }
+            headers = {
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json"
+            }
+            
+            payload = {
+                "model": self.model,
+                "messages": [
+                    {"role": "system", "content": "You are an expert quiz designer. Create clear, fair, and educational quiz questions. Always respond with valid JSON."},
+                    {"role": "user", "content": prompt}
+                ],
+                "max_tokens": max_tokens,
+                "temperature": 0.7
+            }
+            
+            response = requests.post(self.api_url, json=payload, headers=headers, timeout=30)
+            response.raise_for_status()
+            
+            result = response.json()
+            return result["choices"][0]["message"]["content"].strip()
+        except requests.exceptions.RequestException as e:
+            return f"Error calling OpenAI API: {str(e)}"
+        except Exception as e:
+            return f"Error processing response: {str(e)}"
 
     @classmethod
     def generate_quiz_from_text(cls, text: str, num_questions: int = 5, difficulty: str = 'Medium') -> Dict:
         """Generate quiz questions from text content"""
         service = cls()
         
-        # Split text into sentences
-        import re
-        sentences = re.split(r'[.!?]+', text)
-        sentences = [s.strip() for s in sentences if len(s.strip()) > 20]
+        prompt = f"""Generate {num_questions} quiz questions from this text at {difficulty} difficulty level.
         
-        if not sentences:
-            return {'error': 'Text too short to generate quiz', 'questions': []}
+Text: {text[:2000]}
+
+Create a JSON response with this format:
+{{
+    "questions": [
+        {{
+            "question": "Question text?",
+            "question_type": "multiple_choice",
+            "options": ["Option A", "Option B", "Option C", "Option D"],
+            "correct_answer_index": 0,
+            "difficulty_level": "{difficulty}",
+            "points": 10
+        }}
+    ]
+}}
+
+Include both multiple choice questions (3-4 questions) and true/false questions (1-2 questions).
+Ensure answers are factually correct based on the text.
+"""
         
-        questions = []
+        response = service._call_openai(prompt, max_tokens=2000)
         
-        # Generate questions from sentences
-        for i, sentence in enumerate(sentences[:num_questions]):
-            # Multiple choice question
-            question_text = f"Which of the following best describes: {sentence[:80]}...?"
+        try:
+            # Extract JSON from response
+            start_idx = response.find('{')
+            end_idx = response.rfind('}') + 1
+            json_str = response[start_idx:end_idx]
+            data = json.loads(json_str)
             
-            choice = service._generate_multiple_choice(
-                question_text,
-                sentence[:50],
-                text
-            )
-            
-            questions.append({
-                'question': question_text,
-                'question_type': 'multiple_choice',
-                'options': choice['options'],
-                'correct_answer_index': choice['correct_index'],
+            return {
+                'title': 'AI-Generated Quiz',
+                'description': 'Quiz generated from text content',
+                'questions': data.get('questions', [])[:num_questions],
+                'total_questions': len(data.get('questions', [])),
                 'difficulty_level': difficulty,
-                'points': 10 if difficulty == 'Easy' else (20 if difficulty == 'Medium' else 30)
-            })
-        
-        # Add true/false questions
-        for i in range(min(2, num_questions // 2)):
-            sentence = random.choice(sentences)
-            questions.append({
-                'question': f"True or False: {sentence[:80]}?",
-                'question_type': 'true_false',
-                'options': ['True', 'False'],
-                'correct_answer_index': 0,
-                'difficulty_level': difficulty,
-                'points': 5
-            })
-        
-        return {
-            'title': f'Auto-Generated Quiz',
-            'description': 'Quiz generated from text content',
-            'questions': questions[:num_questions],
-            'total_questions': len(questions),
-            'difficulty_level': difficulty,
-            'total_points': sum(q.get('points', 10) for q in questions[:num_questions])
-        }
+                'success': True
+            }
+        except:
+            return {
+                'error': 'Failed to parse quiz response',
+                'success': False,
+                'questions': []
+            }
 
     @classmethod
     def generate_quiz_from_notes(cls, notes_list: List[str], difficulty: str = 'Medium', num_questions: int = 10) -> Dict:
@@ -149,6 +125,117 @@ class QuizAIService:
         
         feedback = []
         
+        for submitted, correct in zip(submitted_responses, correct_answers):
+            points = correct.get('points', 10)
+            total_points += points
+            
+            if submitted.get('answer_index') == correct.get('correct_answer_index'):
+                correct_count += 1
+                earned_points += points
+                feedback.append({
+                    'question_index': len(feedback),
+                    'correct': True,
+                    'message': 'Correct!'
+                })
+            else:
+                feedback.append({
+                    'question_index': len(feedback),
+                    'correct': False,
+                    'correct_answer': correct.get('correct_answer', ''),
+                    'message': f"Incorrect. The correct answer was: {correct.get('correct_answer', '')}"
+                })
+        
+        percentage = (earned_points / total_points * 100) if total_points > 0 else 0
+        
+        return {
+            'correct_answers': correct_count,
+            'total_questions': len(correct_answers),
+            'earned_points': earned_points,
+            'total_points': total_points,
+            'percentage': round(percentage, 2),
+            'feedback': feedback,
+            'success': True
+        }
+
+    @classmethod
+    def analyze_quiz_performance(cls, quiz_attempts: List[Dict]) -> Dict:
+        """Analyze quiz performance trends"""
+        if not quiz_attempts:
+            return {'error': 'No attempts found'}
+        
+        scores = [attempt.get('score', 0) for attempt in quiz_attempts]
+        avg_score = sum(scores) / len(scores) if scores else 0
+        highest_score = max(scores) if scores else 0
+        lowest_score = min(scores) if scores else 0
+        
+        # Identify weak areas
+        weak_topics = []
+        for attempt in quiz_attempts:
+            if attempt.get('score', 0) < 60:
+                topic = attempt.get('topic', 'Unknown')
+                if topic not in weak_topics:
+                    weak_topics.append(topic)
+        
+        return {
+            'average_score': round(avg_score, 2),
+            'highest_score': highest_score,
+            'lowest_score': lowest_score,
+            'total_attempts': len(quiz_attempts),
+            'weak_areas': weak_topics,
+            'improvement_trend': 'improving' if len(scores) > 1 and scores[-1] > scores[0] else 'stable',
+            'success': True
+        }
+
+    @classmethod
+    def get_quiz_recommendations(cls, performance_data: Dict) -> Dict:
+        """Get quiz recommendations based on performance"""
+        service = cls()
+        
+        weak_areas = performance_data.get('weak_areas', [])
+        avg_score = performance_data.get('average_score', 0)
+        
+        if not weak_areas:
+            return {
+                'recommendations': ['Keep practicing to maintain your strong performance!'],
+                'next_quiz_difficulty': 'Advanced',
+                'topics_to_focus': []
+            }
+        
+        prompt = f"""Based on the following weak areas and average score, provide quiz recommendations:
+
+Weak Areas: {', '.join(weak_areas)}
+Average Score: {avg_score}%
+
+Provide 3-4 specific recommendations as JSON array.
+Response format: {{"recommendations": ["rec1", "rec2", "rec3"], "suggested_difficulty": "Medium or Hard"}}
+"""
+        
+        response = service._call_openai(prompt, max_tokens=500)
+        
+        try:
+            start_idx = response.find('{')
+            end_idx = response.rfind('}') + 1
+            json_str = response[start_idx:end_idx]
+            data = json.loads(json_str)
+            
+            return {
+                'recommendations': data.get('recommendations', []),
+                'next_quiz_difficulty': data.get('suggested_difficulty', 'Medium'),
+                'topics_to_focus': weak_areas,
+                'success': True
+            }
+        except:
+            return {
+                'recommendations': [
+                    f'Focus more on: {", ".join(weak_areas)}',
+                    'Practice regularly with quizzes on your weak areas',
+                    'Review the notes on difficult topics'
+                ],
+                'next_quiz_difficulty': 'Medium',
+                'topics_to_focus': weak_areas,
+                'success': True
+            }
+
         for i, (response, correct) in enumerate(zip(submitted_responses, correct_answers)):
             question_index = i + 1
             
