@@ -130,5 +130,7 @@ POST /api/notes/
 ## Environment Setup
 Set environment variables in a .env file for secrets and API keys.
 
-![Build](https://img.shields.io/badge/build-passing-brightgreen)
-![License](https://img.shields.io/badge/license-MIT-blue)
+## Project Authors 
+A.JAYANTH - 2410080075
+DIVIJ MAZUMDAR - 2410080001
+KIRAN KUMBHAR - 2410080065
